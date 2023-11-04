@@ -12,11 +12,11 @@ from midi_note_map import note_mapping
 from organ_display import clear_display
 # Import the SSD1306 module.
 import adafruit_ssd1306
+from analog_pin import scale_analog_in
 
-def scale_analog_in(vol_pin):
-    return round((vol_pin.value*127)/65600)
 
-# --- Initialization ---
+# ----- Initialize IO -------
+
 # Initialize Midi Ports
 midi = adafruit_midi.MIDI(midi_out=usb_midi.ports[1], out_channel=0)
 midi_2 = adafruit_midi.MIDI(midi_out=usb_midi.ports[1], out_channel=1)
@@ -25,10 +25,7 @@ midi_2 = adafruit_midi.MIDI(midi_out=usb_midi.ports[1], out_channel=1)
 i2c = busio.I2C(board.GP17, board.GP16)
 display = adafruit_ssd1306.SSD1306_I2C(128, 32, i2c)
 
-# Initialize IO
-orgin_vol_pin = analogio.AnalogIn(board.GP28)
-orgin_filter_pin = analogio.AnalogIn(board.GP26)
-pot_2 = analogio.AnalogIn(board.GP27)
+# DI Pins - Organ
 button_pins = [
     board.GP0,
     board.GP1,
@@ -45,16 +42,49 @@ button_pins = [
     board.GP12,
 ]
 
+# Di Pins - Internal
 option_pin = board.GP20
-option_btn = digitalio.DigitalInOut(option_pin)
-option_btn.direction = digitalio.Direction.INPUT
-option_btn.pull = digitalio.Pull.UP
 
-midi_pins = [
+# Di Pins - Internal
+control_pins = [
     board.GP13,
     board.GP14,
     board.GP15,
+    board.GP19,
 ]
+
+# Set up buttons
+option_btn = digitalio.DigitalInOut(option_pin)
+option_btn.direction = digitalio.Direction.INPUT
+option_btn.pull = digitalio.Pull.UP
+organ_btns = [digitalio.DigitalInOut(bp) for bp in button_pins]
+for btn in organ_btns:
+    btn.direction = digitalio.Direction.INPUT
+    btn.pull = digitalio.Pull.UP
+ctrl_btns = [digitalio.DigitalInOut(bp) for bp in control_pins]
+for btn in ctrl_btns:
+    btn.direction = digitalio.Direction.INPUT
+    btn.pull = digitalio.Pull.UP
+
+
+# Key and trigger states - Organ Pedals
+pressed_keys = [False for _ in button_pins]
+triggered_keys = [False for _ in button_pins]
+tr_key_cnt = [0 for _ in button_pins]
+
+# Key and trigger states - Midi Buttons
+pressed_keys_midi = [False for _ in control_pins]
+triggered_keys_midi = [False for _ in control_pins]
+
+
+# Ai Pins - Internal
+orgin_vol_pin = analogio.AnalogIn(board.GP28)
+orgin_filter_pin = analogio.AnalogIn(board.GP26)
+pot_2 = analogio.AnalogIn(board.GP27)
+
+transpose = 0
+option_on = False
+option_mode = False
 
 # Clear the display.  Always call show after changing pixels to make the display
 # update visible!
@@ -65,28 +95,6 @@ display.show()
 
 print("MacroPad MIDI Board")
 
-# Set up buttons
-buttons = [digitalio.DigitalInOut(bp) for bp in button_pins]
-for btn in buttons:
-    btn.direction = digitalio.Direction.INPUT
-    btn.pull = digitalio.Pull.UP
-
-midi_buttons = [digitalio.DigitalInOut(bp) for bp in midi_pins]
-for btn in midi_buttons:
-    btn.direction = digitalio.Direction.INPUT
-    btn.pull = digitalio.Pull.UP
-
-# Key and trigger states - Organ Pedals
-pressed_keys = [False for _ in button_pins]
-triggered_keys = [False for _ in button_pins]
-tr_key_cnt = [0 for _ in button_pins]
-
-# Key and trigger states - Midi Buttons
-pressed_keys_midi = [False for _ in midi_pins]
-triggered_keys_midi = [False for _ in midi_pins]
-transpose = 0
-option_on = False
-option_mode = False
 vol =scale_analog_in(orgin_vol_pin)
 filter = scale_analog_in(orgin_filter_pin)
 showing_vol = False
@@ -148,10 +156,10 @@ while True:
         option_on = False
         print("Option Released")
 
-    for ix, btn in enumerate(buttons):
+    for ix, btn in enumerate(organ_btns):
         pressed_keys[ix] = btn.value
 
-    for ix, btn in enumerate(midi_buttons):
+    for ix, btn in enumerate(ctrl_btns):
         pressed_keys_midi[ix] = btn.value
 
     # Organ Buttonns
