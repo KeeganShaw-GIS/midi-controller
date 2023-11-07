@@ -9,8 +9,8 @@ import busio
 from adafruit_midi.note_on import NoteOn
 from adafruit_midi.note_off import NoteOff
 from adafruit_midi.control_change import ControlChange
-from midi_note_map import note_mapping, pot_mapping_normal, pot_mapping_opt
-from organ_display import ODisplay, clear_display, set_text_1, set_text_2, reset_text_1, reset_text_2
+from midi_note_map import note_mapping, pot_mapping_normal, pot_mapping_opt, drum_idx_map, drum_tracks, pot_mapping_drum
+from organ_display import ODisplay
 # Import the SSD1306 module.
 import adafruit_ssd1306
 from analog_pin import scale_analog_in
@@ -84,16 +84,23 @@ pots = [analogio.AnalogIn(board.GP28), analogio.AnalogIn(board.GP27), analogio.A
 pot_vals = [scale_analog_in(pot) for pot in pots]
 showing_pots_cnt = 0
 
-# ------- Initialize Display --------
-o_display = ODisplay(display, "Play", '%s' % note_mapping[0])
 
 
 # init internal vars
 transpose = 0
-option_mode = False
+oct_drop = False
+drum_track = 0
+mode = "Pl"
+
 option_on_flag = False # Flag for denoting option button has been engaged
-option_on = False # Flag for denoting option button has been engaged
 debounce_time = 0.001 
+
+# ------- Initialize Display --------
+o_display = ODisplay(display, "Pl", '%s' % note_mapping[12], "0")
+
+
+def getNoteNumber(key_idx, transpose, octave_drop, root=48):
+    return root + key_idx + transpose - octave_drop*12
 
 print("MacroPad MIDI Board")
 # Run Main Routine
@@ -117,7 +124,6 @@ while True:
 
     for ix, btn in enumerate(organ_btns):
         if tr_key_dtime[ix] > 0 and current_time - tr_key_dtime[ix] >= debounce_time:
-                print(str(current_time - tr_key_dtime[ix]))
                 pressed_keys[ix] = not btn.value
                 tr_key_dtime[ix] = 0
 
@@ -125,13 +131,19 @@ while True:
     for ix, btn in enumerate(ctrl_btns):
         pressed_ctl_btns[ix] = not btn.value
 
-    # ---- Handle Options ----
+    # ---- Handle Opts ----
     # On Click - option_btn.value is fail safe
     if not option_btn.value and not option_on_flag:
         # After Value has been on for more then a scan, d
-        option_mode = not option_mode
+        if mode == "Pl":
+            mode = "Op"
+        elif mode == "Op":
+            mode = "Dm"
+        else:
+            mode = "Pl"
+        o_display.set_text_1(mode)
         option_on_flag = True
-        if option_mode:
+        if mode == "Op" or mode == "Dm" :
             # clear all keys
             for idx, _ in enumerate(button_pins):
                 if pressed_keys[idx]:
@@ -139,10 +151,15 @@ while True:
                 if triggered_keys[idx]:
                     triggered_keys[idx] = False
                 if pressed_keys[idx] or triggered_keys[idx]:
-                    midi.send([NoteOff(48 + ix + transpose, 0)])
-            o_display.set_text_1("Options")
-            o_display.set_text_2('-')
-        else:
+                    midi.send([NoteOff(getNoteNumber(idx, transpose, oct_drop), 0)])
+            if mode == "Op":
+                o_display.set_text_2('%s' % note_mapping[transpose+(1-oct_drop)*12])
+                o_display.set_text_3('D' if oct_drop else 'N')
+            if mode == "Dm":
+                o_display.set_text_2(str(drum_track))
+                o_display.set_text_3("")
+        
+        elif mode == "Pl":
             # clear all keys
             for idx, _ in enumerate(control_pins):
                 if pressed_ctl_btns[idx]:
@@ -151,8 +168,8 @@ while True:
                     trig_ctl_btns[idx] = False
                 if pressed_ctl_btns[idx] or trig_ctl_btns[idx]:
                     midi_2.send([NoteOff(36 + ix, 0)])
-            o_display.set_text_1("Play")
-            o_display.set_text_2('%s' % note_mapping[transpose])
+            o_display.set_text_3(str(drum_track))
+            o_display.set_text_2('%s' % note_mapping[transpose+(1-oct_drop)*12])
     # On Release - option_btn.value is fail safe
     if option_btn.value and option_on_flag:
         option_on_flag = False
@@ -162,12 +179,16 @@ while True:
     new_pot_vals = [scale_analog_in(pot) for pot in pots]
     for ix, (nv, v) in enumerate(zip(new_pot_vals, pot_vals)):
         if abs(nv-v) > 4:
-            if option_mode:
+            if mode == "Op":
                 o_display.set_text_1(pot_mapping_opt[ix][0])
                 midi_2.send([ControlChange(pot_mapping_opt[ix][1], nv)])
-            else:
+            elif mode == "Pl":
                 o_display.set_text_1(pot_mapping_normal[ix][0])
                 midi_2.send([ControlChange(pot_mapping_normal[ix][1], nv)])
+            elif mode == "Dm":
+                # Fix here
+                o_display.set_text_1(pot_mapping_drum[ix][0])
+                midi_2.send([ControlChange(pot_mapping_drum[ix][1], nv)])
             o_display.set_text_2(str(nv))
             showing_pots_cnt=1
             pot_vals[ix] = nv
@@ -176,12 +197,14 @@ while True:
         if showing_pots_cnt < 500:
             showing_pots_cnt = showing_pots_cnt + 1
         else:
-            if option_mode:
-                o_display.set_text_1("Options")
-                o_display.set_text_2('-')
-            else:
-                o_display.set_text_1("Play")
-                o_display.set_text_2('%s' % note_mapping[transpose])
+            o_display.set_text_1(mode)
+            if mode == "Op":
+                o_display.set_text_2('%s' % note_mapping[transpose+(1-oct_drop)*12])
+            elif mode == "Pl":
+                o_display.set_text_3(str(drum_track))
+                o_display.set_text_2('%s' % note_mapping[transpose+(1-oct_drop)*12])
+            elif mode == "Dm":
+                o_display.set_text_2(str(drum_track))
             showing_pots_cnt = 0
 
     # Organ Buttonns
@@ -189,32 +212,56 @@ while True:
         # IF key is pressed but not yet Triggered
         if pk and not tk:
             triggered_keys[ix] = True
-            if not option_mode:
-                midi.send([NoteOn(48 + ix + transpose, 127 )])
-            else:
-                o_display.set_text_1("Options")
-                o_display.set_text_2('%s' % note_mapping[ix])
+            if mode == "Pl":
+                # print("midi %s started" % getNoteNumber(ix, transpose, oct_drop))
+                midi.send([NoteOn(getNoteNumber(ix, transpose, oct_drop), 127 )])
+            elif mode == "Op":
+                o_display.set_text_2('%s' % note_mapping[ix+(1-oct_drop)*12])
                 transpose = ix
-
+            elif mode == "Dm":
+                drum_idx = drum_idx_map[ix]
+                if (drum_idx > 0):
+                    o_display.set_text_2(str(drum_idx))
+                    drum_track = ix
+                
         elif not pk and tk:
         # IF key is not being pressed and was triggered
             triggered_keys[ix] = False
-            if not option_mode:
-                midi.send([NoteOff(48 + ix + transpose, 0)])
+            if mode == "Pl":
+                midi.send([NoteOff(getNoteNumber(ix, transpose, oct_drop), 0)])
 
     # Control Buttons
     for ix, (pk, tk) in enumerate(zip(pressed_ctl_btns, trig_ctl_btns)):
         if pk and not tk:
             trig_ctl_btns[ix] = True
-            if not option_mode:
-                print("midi %s started" % note_mapping[ix])
-                midi_2.send([NoteOn(36 + ix, 127)])
-            else:
-                print("option-midi %s pressed" % note_mapping[ix])
+            if mode == "Pl":
+                # Start Drums
+                if ix == 2:
+                    # print("drum %s started" % drum_tracks[drum_track][0])
+                    midi_2.send([NoteOn(drum_tracks[drum_track][0], 127)])
+                # Stop Drums
+                elif ix == 3:
+                    # print("drum %s stopped" % drum_tracks[drum_track][1])
+                    midi_2.send([NoteOn(drum_tracks[drum_track][1], 127)])
+                else:
+                    # print("midi %s started" % note_mapping[ix])
+                    midi_2.send([NoteOn(36 + ix, 127)])
+            elif mode == "Op":
+                if ix == 0:
+                    oct_drop = not oct_drop
+                    o_display.set_text_3('D' if oct_drop else 'N')
+            # else:
+                # print("option-midi %s pressed" % note_mapping[ix])
 
         elif not pk and tk:
             trig_ctl_btns[ix] = False
-            if not option_mode:
-                print("midi %s stopped" % note_mapping[ix])
-                midi_2.send([NoteOff(36 + ix, 0)])
+            if mode == "Pl":
+                # Start Drums
+                if ix == 2:
+                    midi_2.send([NoteOff(drum_tracks[drum_track][0], 0)])
+                # Stop Drums
+                elif ix == 3:
+                    midi_2.send([NoteOff(drum_tracks[drum_track][1], 0)])
+                else:
+                    midi_2.send([NoteOff(36 + ix, 0)])
 

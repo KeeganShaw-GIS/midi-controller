@@ -1,16 +1,20 @@
 class ODisplay:
-    def __init__(self, display_obj, text1, text2):
+    def __init__(self, display_obj, text1, text2, text3):
         self.display = display_obj
         self.text1 = text1
-        self.text1_pos = [0, 20]
-        self.text1_size = 1
+        self.text1_pos = [0, 15]
+        self.text1_size = 2
         self.text2 = text2
-        self.text2_pos = [62, 15]
+        self.text2_pos = [50, 15]
         self.text2_size = 2
+        self.text3 = text3
+        self.text3_pos = [105, 15]
+        self.text3_size = 2
         
         self.clear()
         self.set_text_1(text1)
         self.set_text_2(text2)
+        self.set_text_3(text3)
 
     def clear(self):
         self.display.fill(0)
@@ -59,26 +63,26 @@ class ODisplay:
             size=self.text2_size)
         self.display.show()    
 
+    def set_text_3(self, text):
+        # Clear Display
+        self.display.text(
+            str(self.text3), 
+            self.text3_pos[0], 
+            self.text3_pos[1],
+            0,
+            size=self.text3_size)
+        self.display.show() 
+        
+        #Set Variable
+        self.text3 = text
+
+        # Set Display
+        self.display.text(
+            self.text3, 
+            self.text3_pos[0], 
+            self.text3_pos[1],
+            1,
+            size=self.text3_size)
+        self.display.show()    
 
 
-
-
-def clear_display(display_obj):
-    display_obj.fill(0)
-    display_obj.show()
-
-def set_text_1(text, display, size=1):
-    display.text(text, 0, 20,1,size=size)
-    display.show()
-
-def set_text_2(text, display, size=2):
-    display.text(text, 62, 15,1,size=size)
-    display.show()
-
-def reset_text_1(prev_text, display_obj):
-    display_obj.fill(0)
-    display_obj.show()
-
-def reset_text_2(prev_text, display_obj):
-    display_obj.fill(0)
-    display_obj.show()
