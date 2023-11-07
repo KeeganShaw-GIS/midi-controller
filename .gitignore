@@ -3,5 +3,4 @@
 boot_out.txt
 settings.toml
 /.fseventsd/
-/.vscode/
 /System Volume Information/*
