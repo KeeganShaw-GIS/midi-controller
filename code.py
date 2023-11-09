@@ -89,14 +89,14 @@ showing_pots_cnt = 0
 # init internal vars
 transpose = 0
 oct_drop = False
-drum_track = 0
+drum_track = 1
 mode = "Pl"
 
 option_on_flag = False # Flag for denoting option button has been engaged
 debounce_time = 0.001 
 
 # ------- Initialize Display --------
-o_display = ODisplay(display, "Pl", '%s' % note_mapping[12], "0")
+o_display = ODisplay(display, "Pl", '%s' % note_mapping[12], str(drum_track))
 
 
 def getNoteNumber(key_idx, transpose, octave_drop, root=48):
@@ -222,7 +222,7 @@ while True:
                 drum_idx = drum_idx_map[ix]
                 if (drum_idx > 0):
                     o_display.set_text_2(str(drum_idx))
-                    drum_track = ix
+                    drum_track = drum_idx
                 
         elif not pk and tk:
         # IF key is not being pressed and was triggered
@@ -238,11 +238,11 @@ while True:
                 # Start Drums
                 if ix == 2:
                     # print("drum %s started" % drum_tracks[drum_track][0])
-                    midi_2.send([NoteOn(drum_tracks[drum_track][0], 127)])
+                    midi_2.send([NoteOn(drum_tracks[drum_track-1][0], 127)])
                 # Stop Drums
                 elif ix == 3:
                     # print("drum %s stopped" % drum_tracks[drum_track][1])
-                    midi_2.send([NoteOn(drum_tracks[drum_track][1], 127)])
+                    midi_2.send([NoteOn(drum_tracks[drum_track-1][1], 127)])
                 else:
                     # print("midi %s started" % note_mapping[ix])
                     midi_2.send([NoteOn(36 + ix, 127)])
@@ -258,10 +258,10 @@ while True:
             if mode == "Pl":
                 # Start Drums
                 if ix == 2:
-                    midi_2.send([NoteOff(drum_tracks[drum_track][0], 0)])
+                    midi_2.send([NoteOff(drum_tracks[drum_track-1][0], 0)])
                 # Stop Drums
                 elif ix == 3:
-                    midi_2.send([NoteOff(drum_tracks[drum_track][1], 0)])
+                    midi_2.send([NoteOff(drum_tracks[drum_track-1][1], 0)])
                 else:
                     midi_2.send([NoteOff(36 + ix, 0)])
 
