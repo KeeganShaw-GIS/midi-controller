@@ -12,3 +12,11 @@ Features:
 - Drum Track Play and Stop - (CC 100 to 108 to play , and CC 109-117 to stop) Value is determined by selected drum track
 - Transpose Key with option selector (Option Button -> Note you want to transpose to ----> Puts that not in the Low C position)
 - Select Drum Track with option selector (Option Button x2 -> Select Track 1-8 (White Keys) ----> Drum Play and )
+
+How To Use:
+1. Get a raspberry Pi Pico (with headers if you don't solder).
+2. Find an old organ with a foot pedal board. Or build your own with a twister mat. I dont care. 
+4. Install Circuit Py.
+5. Copy Code and Libs folder.
+6. Get wiring!
+7. Coming Soon.... A circuit diagram. 
