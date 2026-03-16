@@ -1,8 +1,8 @@
 # midi-controller
 
-Inspired by Benj of the [mayhemingways](https://youtu.be/ROnXihaXhZg?feature=shared&t=181). A toy that lets you play base while you do other things with your hands! Like write code. 
+Inspired by Benj of the [mayhemingways](https://youtu.be/ROnXihaXhZg?feature=shared&t=181). A toy that lets you play bass while you do other things with your hands! Like write code. 
 
-A midi controller built from an 12 key old organ foot pedal and Some momentary pushbuttons, a SSD1306 Display, and a few 10K pots. Designed to send notes to a synth (Fluid synth on a raspberry PI). That control Bass, and Drums. 
+A midi controller built from a 12 key old organ foot pedal and some momentary pushbuttons, a SSD1306 Display, and a few 10K pots. Designed to send notes to a synth (Fluid synth on a raspberry PI). That control Bass, and Drums. 
 
 Features:
 - 3 Pots, send reserved CC for volume (7, 9) , reverb (??), drum temp
